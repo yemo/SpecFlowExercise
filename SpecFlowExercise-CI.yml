@@ -1,0 +1,77 @@
+# Variable 'BROWSER' was defined in the Variables tab
+jobs:
+- job: Job_1
+  displayName: Execute UI Automation
+  pool:
+    vmImage: windows-2019
+  steps:
+  - checkout: self
+    fetchDepth: 1
+  - task: NuGetCommand@2
+    displayName: NuGet restore
+    inputs:
+      solution: SpecflowExcecise.sln
+      feedRestore: 54b373cc-bce3-496a-a741-944b2bf98eff
+  - task: DotNetCoreCLI@2
+    displayName: Build UIAutomation
+    inputs:
+      projects: '**\UIAutomation\UIAutomation.csproj'
+      arguments: --configuration $(BuildConfiguration) --no-restore
+  - task: DotNetCoreCLI@2
+    displayName: Publish UIAutomation
+    inputs:
+      command: publish
+      publishWebProjects: false
+      projects: '**\UIAutomation\UIAutomation.csproj'
+      arguments: --configuration $(BuildConfiguration) --output "$(build.artifactstagingdirectory)" --no-build
+      zipAfterPublish: false
+  - task: DotNetCoreCLI@2
+    displayName: Build APIAutomation
+    inputs:
+      projects: '**\APIAutomation\APIAutomation.csproj'
+      arguments: --configuration $(BuildConfiguration) --no-restore
+  - task: DotNetCoreCLI@2
+    displayName: Publish APIAutomation
+    inputs:
+      command: publish
+      publishWebProjects: false
+      projects: '**\APIAutomation\APIAutomation.csproj'
+      arguments: --configuration $(BuildConfiguration) --output "$(build.artifactstagingdirectory)" --no-build
+      zipAfterPublish: false
+  - task: PublishBuildArtifacts@1
+    displayName: Publish Artifact
+  - task: VSTest@2
+    displayName: VsTest - testAssemblies
+    continueOnError: True
+    inputs:
+      testAssemblyVer2: >-
+        **\APIAutomation.dll
+
+        **\UIAutomation.dll
+
+        !**\*TestAdapter.dll
+
+        !**\obj\**
+  - task: SpecFlowPlus@0
+    displayName: SpecFlow+ APIAutomation build step
+    continueOnError: True
+    inputs:
+      generatorSource: TestAssembly
+      projectFilePath: APIAutomation/Features
+      testAssemblyFilePath: '\APIAutomation\bin\**\netcoreapp3.1\APIAutomation.dll'
+      projectName: APIAutomation
+      testExecutionJson: '\APIAutomation\bin\**\netcoreapp3.1\TestExecution.json'
+      projectLanguage: en
+      bindingAssemblies: '\APIAutomation\bin\**\netcoreapp3.1\APIAutomation.dll'
+  - task: SpecFlowPlus@0
+    displayName: SpecFlow+ UIAutomation build step
+    continueOnError: True
+    inputs:
+      generatorSource: TestAssembly
+      projectFilePath: UIAutomation/Features
+      testAssemblyFilePath: '\UIAutomation\bin\**\netcoreapp3.1\UIAutomation.dll'
+      projectName: UIAutomation
+      testExecutionJson: '\UIAutomation\bin\**\netcoreapp3.1\TestExecution.json'
+      projectLanguage: en
+      bindingAssemblies: '\UIAutomation\bin\**\netcoreapp3.1\UIAutomation.dll'
+...
